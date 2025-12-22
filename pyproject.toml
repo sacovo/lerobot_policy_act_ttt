@@ -1,0 +1,7 @@
+[project]
+name = "lerobot_policy_act_ttt"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
