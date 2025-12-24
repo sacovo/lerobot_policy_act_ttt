@@ -13,13 +13,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Literal
 from dataclasses import dataclass, field
+from typing import Literal
 
 from lerobot.configs.policies import PreTrainedConfig
 from lerobot.configs.types import NormalizationMode
 from lerobot.optim.optimizers import AdamWConfig
-
 
 
 @PreTrainedConfig.register_subclass("act_ttt")
@@ -117,11 +116,12 @@ class ACTTTTConfig(PreTrainedConfig):
     dim_feedforward: int = 3200
     feedforward_activation: str = "relu"
     n_encoder_layers: int = 4
-    
+
+    ttt_enabled = True
     ttt_learning_rate: float = 0.001
     ttt_steps: int = 5
-    
-    ttt_transform: Literal['flip'] | Literal['color'] | Literal['jigsaw'] = 'flip'
+
+    ttt_transform: Literal["flip"] | Literal["color"] | Literal["jigsaw"] = "flip"
     # Note: Although the original ACT implementation has 7 for `n_decoder_layers`, there is a bug in the code
     # that means only the first layer is used. Here we match the original implementation by setting this to 1.
     # See this issue https://github.com/tonyzhaozh/act/issues/25#issue-2258740521.
@@ -178,7 +178,9 @@ class ACTTTTConfig(PreTrainedConfig):
 
     def validate_features(self) -> None:
         if not self.image_features and not self.env_state_feature:
-            raise ValueError("You must provide at least one image or the environment state among the inputs.")
+            raise ValueError(
+                "You must provide at least one image or the environment state among the inputs."
+            )
 
     @property
     def observation_delta_indices(self) -> None:

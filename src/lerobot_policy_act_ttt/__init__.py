@@ -7,14 +7,15 @@ except ImportError:
         "lerobot is not installed. Please install lerobot to use this policy package."
     )
 
-from .configuration_act import ACTTTTConfig 
+from .configuration_act import ACTTTTConfig
 from .modeling_act import ACTTTTPolicy
-from .processor_act import make_actttt_pre_post_processors
+from .processor_act import make_act_ttt_pre_post_processors
 
 print("This is a test")
 
 __all__ = [
     "ACTTTTConfig",
     "ACTTTTPolicy",
-    "make_actttt_pre_post_processors",
+    "make_act_ttt_pre_post_processors",
 ]
+
