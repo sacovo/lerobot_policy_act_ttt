@@ -17,16 +17,13 @@ from dataclasses import dataclass, field
 from typing import Literal
 
 from lerobot.configs.policies import PreTrainedConfig
-from lerobot.configs.types import NormalizationMode
-from lerobot.optim.optimizers import AdamWConfig
+from lerobot.policies.act.configuration_act import ACTConfig
 
 
 @PreTrainedConfig.register_subclass("act_ttt")
 @dataclass
-class ACTTTTConfig(PreTrainedConfig):
+class ACT_TTTConfig(ACTConfig):
     """Configuration class for the Action Chunking Transformers policy with test time training.
-
-    Defaults are configured for training on bimanual Aloha tasks like "insertion" or "transfer".
 
     The parameters you will most likely need to change are the ones which depend on the environment / sensors.
     Those are: `input_shapes` and 'output_shapes`.
@@ -69,6 +66,10 @@ class ACTTTTConfig(PreTrainedConfig):
             `None` means no pretrained weights.
         replace_final_stride_with_dilation: Whether to replace the ResNet's final 2x2 stride with a dilated
             convolution.
+        ttt_enabled: Whether to enable test time training.
+        ttt_learning_rate: The learning rate to use for test time training.
+        ttt_steps: The number of optimization steps to take during test time training.
+        ttt_transform: The type of transformation to use for test time training.
         pre_norm: Whether to use "pre-norm" in the transformer blocks.
         dim_model: The transformer blocks' main hidden dimension.
         n_heads: The number of heads to use in the transformer blocks' multi-head attention.
@@ -91,105 +92,19 @@ class ACTTTTConfig(PreTrainedConfig):
             is enabled. Loss is then calculated as: `reconstruction_loss + kl_weight * kld_loss`.
     """
 
-    # Input / output structure.
-    n_obs_steps: int = 1
-    chunk_size: int = 100
-    n_action_steps: int = 100
+    ttt_enabled: bool = True
+    ttt_steps: int = 8
+    ttt_n_samples: int = 4
+    ttt_transform: Literal["flip"] | Literal["color"] | Literal["jigsaw"] = "flip"
 
-    normalization_mapping: dict[str, NormalizationMode] = field(
-        default_factory=lambda: {
-            "VISUAL": NormalizationMode.MEAN_STD,
-            "STATE": NormalizationMode.MEAN_STD,
-            "ACTION": NormalizationMode.MEAN_STD,
-        }
+    ttt_ss_head_latent_dim: int = 512
+    ttt_ss_head_layers: int = 2
+
+    ttt_optimizer: str = "AdamW"
+    ttt_optimizer_config: dict = field(
+        default_factory=lambda: {"weight_decay": 1e-4, "lr": 1e-6}
     )
 
-    # Architecture.
-    # Vision backbone.
-    vision_backbone: str = "resnet18"
-    pretrained_backbone_weights: str | None = "ResNet18_Weights.IMAGENET1K_V1"
-    replace_final_stride_with_dilation: int = False
-    # Transformer layers.
-    pre_norm: bool = False
-    dim_model: int = 512
-    n_heads: int = 8
-    dim_feedforward: int = 3200
-    feedforward_activation: str = "relu"
-    n_encoder_layers: int = 4
+    ttt_optimize_layers: list[str] = field(default_factory=lambda: ["layer1", "layer2"])
 
-    ttt_enabled = True
-    ttt_learning_rate: float = 0.001
-    ttt_steps: int = 5
-
-    ttt_transform: Literal["flip"] | Literal["color"] | Literal["jigsaw"] = "flip"
-    # Note: Although the original ACT implementation has 7 for `n_decoder_layers`, there is a bug in the code
-    # that means only the first layer is used. Here we match the original implementation by setting this to 1.
-    # See this issue https://github.com/tonyzhaozh/act/issues/25#issue-2258740521.
-    n_decoder_layers: int = 1
-    # VAE.
-    use_vae: bool = True
-    latent_dim: int = 32
-    n_vae_encoder_layers: int = 4
-
-    # Inference.
-    # Note: the value used in ACT when temporal ensembling is enabled is 0.01.
-    temporal_ensemble_coeff: float | None = None
-
-    # Training and loss computation.
-    dropout: float = 0.1
-    kl_weight: float = 10.0
-
-    # Training preset
-    optimizer_lr: float = 1e-5
-    optimizer_weight_decay: float = 1e-4
-    optimizer_lr_backbone: float = 1e-5
-
-    def __post_init__(self):
-        super().__post_init__()
-
-        """Input validation (not exhaustive)."""
-        if not self.vision_backbone.startswith("resnet"):
-            raise ValueError(
-                f"`vision_backbone` must be one of the ResNet variants. Got {self.vision_backbone}."
-            )
-        if self.temporal_ensemble_coeff is not None and self.n_action_steps > 1:
-            raise NotImplementedError(
-                "`n_action_steps` must be 1 when using temporal ensembling. This is "
-                "because the policy needs to be queried every step to compute the ensembled action."
-            )
-        if self.n_action_steps > self.chunk_size:
-            raise ValueError(
-                f"The chunk size is the upper bound for the number of action steps per model invocation. Got "
-                f"{self.n_action_steps} for `n_action_steps` and {self.chunk_size} for `chunk_size`."
-            )
-        if self.n_obs_steps != 1:
-            raise ValueError(
-                f"Multiple observation steps not handled yet. Got `nobs_steps={self.n_obs_steps}`"
-            )
-
-    def get_optimizer_preset(self) -> AdamWConfig:
-        return AdamWConfig(
-            lr=self.optimizer_lr,
-            weight_decay=self.optimizer_weight_decay,
-        )
-
-    def get_scheduler_preset(self) -> None:
-        return None
-
-    def validate_features(self) -> None:
-        if not self.image_features and not self.env_state_feature:
-            raise ValueError(
-                "You must provide at least one image or the environment state among the inputs."
-            )
-
-    @property
-    def observation_delta_indices(self) -> None:
-        return None
-
-    @property
-    def action_delta_indices(self) -> list:
-        return list(range(self.chunk_size))
-
-    @property
-    def reward_delta_indices(self) -> None:
-        return None
+    joint_loss_weight: float = 0.2
