@@ -19,6 +19,8 @@ As per Learning Fine-Grained Bimanual Manipulation with Low-Cost Hardware (https
 The majority of changes here involve removing unused code, unifying naming, and adding helpful comments.
 """
 
+from collections import deque
+
 import torch
 import torch.nn.functional as F  # noqa: N812
 import torchvision
@@ -135,6 +137,59 @@ class ACT_TTTPolicy(PreTrainedPolicy):
         self.ttt_enabled = True
 
         self.reset()
+
+    def get_optim_params(self) -> dict:
+        # TODO(aliberts, rcadene): As of now, lr_backbone == lr
+        # Should we remove this and just `return self.parameters()`?
+        return [
+            {
+                "params": [
+                    p
+                    for n, p in self.named_parameters()
+                    if not n.startswith("model.backbone") and p.requires_grad
+                ]
+            },
+            {
+                "params": [
+                    p
+                    for n, p in self.named_parameters()
+                    if n.startswith("model.backbone") and p.requires_grad
+                ],
+                "lr": self.config.optimizer_lr_backbone,
+            },
+        ]
+
+    def reset(self):
+        """This should be called whenever the environment is reset."""
+        if self.config.temporal_ensemble_coeff is not None:
+            self.temporal_ensembler.reset()
+        else:
+            self._action_queue = deque([], maxlen=self.config.n_action_steps)
+
+    @torch.no_grad()
+    def select_action(self, batch: dict[str, Tensor]) -> Tensor:
+        """Select a single action given environment observations.
+
+        This method wraps `select_actions` in order to return one action at a time for execution in the
+        environment. It works by managing the actions in a queue and only calling `select_actions` when the
+        queue is empty.
+        """
+        self.eval()  # keeping the policy in eval mode as it could be set to train mode while queue is consumed
+
+        if self.config.temporal_ensemble_coeff is not None:
+            actions = self.predict_action_chunk(batch)
+            action = self.temporal_ensembler.update(actions)
+            return action
+
+        # Action queue logic for n_action_steps > 1. When the action_queue is depleted, populate it by
+        # querying the policy.
+        if len(self._action_queue) == 0:
+            actions = self.predict_action_chunk(batch)[:, : self.config.n_action_steps]
+
+            # `self.model.forward` returns a (batch_size, n_action_steps, action_dim) tensor, but the queue
+            # effectively has shape (n_action_steps, batch_size, *), hence the transpose.
+            self._action_queue.extend(actions.transpose(0, 1))
+        return self._action_queue.popleft()
 
     @torch.no_grad()
     def predict_action_chunk(self, batch: dict[str, Tensor]) -> Tensor:
