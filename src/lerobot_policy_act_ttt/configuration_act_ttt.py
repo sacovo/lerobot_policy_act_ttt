@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from dataclasses import dataclass, field
-from typing import Literal
 
 from lerobot.configs.policies import PreTrainedConfig
 from lerobot.policies.act.configuration_act import ACTConfig
@@ -95,7 +94,7 @@ class ACT_TTTConfig(ACTConfig):
     ttt_enabled: bool = True
     ttt_steps: int = 8
     ttt_n_samples: int = 4
-    ttt_transform: Literal["flip"] | Literal["color"] | Literal["jigsaw"] = "flip"
+    ttt_transform: str = "flip"
 
     ttt_ss_head_latent_dim: int = 512
     ttt_ss_head_layers: int = 2
