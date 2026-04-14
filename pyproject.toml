@@ -7,7 +7,7 @@ requires-python = ">=3.12"
 dependencies = ["lerobot>=0.4.2", "torch>=2.7.1", "torchvision>=0.22.1"]
 
 [tool.uv.sources]
-lerobot = { git = "https://github.com/huggingface/lerobot.git", rev = "17c5a0774faf2ed956315bb225daa8791f650a96" }
+lerobot = { git = "https://github.com/huggingface/lerobot.git", rev = "v0.5.1" }
 
 
 [tool.pytest.ini_options]
