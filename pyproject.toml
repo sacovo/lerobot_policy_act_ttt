@@ -1,25 +1,25 @@
 [project]
 name = "lerobot_policy_act_ttt"
-version = "0.1.0"
+version = "0.1.1"
 description = "ACT policy with Test-Time Tuning (TTT) for LeRobot"
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
-authors = [
-    { name = "Sandro Covo" }
-]
+authors = [{ name = "Sandro Covo" }]
 classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
-    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
-keywords = ["robotics", "lerobot", "imitation-learning", "test-time-tuning", "act"]
-dependencies = [
-    "lerobot>=0.4.2",
-    "torch>=2.7.1",
-    "torchvision>=0.22.1"
+keywords = [
+  "robotics",
+  "lerobot",
+  "imitation-learning",
+  "test-time-tuning",
+  "act",
 ]
+dependencies = ["lerobot>=0.4.2", "torch>=2.7.1", "torchvision>=0.22.1"]
 
 [project.urls]
 Homepage = "https://github.com/sacovo/lerobot_policy_act_ttt"
