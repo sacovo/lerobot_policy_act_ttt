@@ -194,8 +194,13 @@ class TTTVisionBackbone(nn.Module):
         return loss
 
     def test_time_training(self, batch):
-        # Enable gradients even if called from a no_grad context (e.g., select_action)
-        with torch.enable_grad():
+        # Temporarily disable inference mode and enable gradients
+        with torch.inference_mode(False), torch.enable_grad():
+            # Ensure optimization parameters have requires_grad=True
+            for group in self.optim.param_groups:
+                for p in group["params"]:
+                    p.requires_grad = True
+
             self.backbone_model.train()
             self.ss_head.eval()
 
